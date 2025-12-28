@@ -37,12 +37,11 @@ fn clamp_threads_by_memory(requested_threads: usize) -> usize {
     let mut sysinfo = System::new();
     sysinfo.refresh_memory();
 
-    let total_system_memory = sysinfo.total_memory();
+    let available_memory = sysinfo.available_memory();
     let memory_per_thread = crate::consts::cli_consts::PROJECTED_MEMORY_REQUIREMENT;
 
-    // Calculate max threads based on total system memory
-    // Reserve 25% of system memory for OS and other processes
-    let available_memory = (total_system_memory as f64 * 0.75) as u64;
+    // Calculate max threads based on available system memory
+    // Use all available system memory
     let max_threads_by_memory = (available_memory / memory_per_thread) as usize;
 
     // Return the minimum of requested threads and memory-limited threads
@@ -112,9 +111,9 @@ pub async fn setup_session(
     // Create orchestrator client
     let orchestrator_client = OrchestratorClient::new(env.clone());
 
-    // Clamp the number of workers to [1, 75% of num_cores]. Leave room for other processes.
+    // Clamp the number of workers to [1, num_cores].
     let total_cores = crate::system::num_cores();
-    let max_workers = ((total_cores as f64 * 0.75).ceil() as usize).max(1);
+    let max_workers = total_cores.max(1);
     let mut num_workers: usize = max_threads.unwrap_or(1).clamp(1, max_workers as u32) as usize;
 
     // Check memory and clamp threads if max-threads was explicitly set OR check-memory flag is set
